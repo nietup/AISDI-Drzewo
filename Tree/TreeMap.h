@@ -69,16 +69,11 @@ struct TreeNode : CCount {
     TreeNode* right;   ///< The right child in the tree
     T data;            ///< User's data
     short b;            ///< balance
-    TreeNode (const T& d) : parent (NULL), left (NULL), right (NULL), data (d), b (0) {
-    }
-    TreeNode (const T& d, TreeNode* l, TreeNode* r) : parent (NULL), left (l), right (r), data (d), b (0) {
-    }
-    TreeNode (const T& d, TreeNode* p) : parent (p), left (NULL), right (NULL), data (d), b (0) {
-    }
-    TreeNode (const T& d, TreeNode* p, TreeNode* l, TreeNode* r) : parent (p), left (l), right (r), data (d), b (0) {
-    }
-    TreeNode (const T& d, short bal, TreeNode* p) : parent (p), left (NULL), right (NULL), data (d), b (bal) {
-    }
+    TreeNode (const T& d) : parent (NULL), left (NULL), right (NULL), data (d), b (0) {}
+    TreeNode (const T& d, TreeNode* l, TreeNode* r) : parent (NULL), left (l), right (r), data (d), b (0) {}
+    TreeNode (const T& d, TreeNode* p) : parent (p), left (NULL), right (NULL), data (d), b (0) {}
+    TreeNode (const T& d, TreeNode* p, TreeNode* l, TreeNode* r) : parent (p), left (l), right (r), data (d), b (0) {}
+    TreeNode (const T& d, short bal, TreeNode* p) : parent (p), left (NULL), right (NULL), data (d), b (bal) {}
 };
 class TreeMapDetail;
 /// A map with a similar interface to std::map.

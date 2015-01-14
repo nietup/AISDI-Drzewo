@@ -35,6 +35,9 @@ ALL RIGHTS RESERVED
 
 #include "TreeMap.h"
 
+static TreeMap::Val DEFAULT_VALUE = "Automatically generated node";
+static TreeMap::Key DEFAULT_KEY = -1;
+
 /// A helper class.
 class TreeMapDetail //Helper
 {
@@ -73,13 +76,12 @@ TreeMap::~TreeMap () {
 //          the address where a new element was inserted or where the element
 //          was already located.
 std::pair<TreeMap::iterator, bool> TreeMap::insert (const std::pair<Key, Val>& entry) {
-    ///@todo Finnish this
-    iterator i;
-    for (i = begin (); i != end (); ++i) {
-        if (i->first == entry.first)
-            return std::make_pair (i, (bool)false);
-    }
-    return std::make_pair (i, (bool)false);
+    iterator insertIterator = find (entry.first);
+
+    if (insertIterator == end ())                                        //nie ma jeszcze takiego klucza
+        return std::make_pair (unsafe_insert (entry), (bool)true);
+
+    return std::make_pair (insertIterator, (bool)false);
 }
 
 // Inserts an element into the map.
@@ -111,27 +113,34 @@ TreeMap::const_iterator TreeMap::find (const Key& k) const {
 // if one with such a key value does not exist.
 // @returns Reference to the value component of the element defined by the key.
 TreeMap::Val& TreeMap::operator[](const Key& k) {
-    ///@todo Implement this
-    assert (0);
-    iterator i;
-    return i->second;
+    iterator found = find (k);
+
+    if (found == end ())
+        found = unsafe_insert (std::make_pair (k, DEFAULT_VALUE));
+
+    return found->second;
 }
 
 // Tests if a map is empty.
 bool TreeMap::empty () const {
-    return root == NULL;
+    return (begin ()) == end ();
 }
 
 // Returns the number of elements in the map.
 TreeMap::size_type TreeMap::size () const {
-    ///@todo Implement this
-    assert (0);
-    return 0;
+    TreeMap::size_type number = 0;
+
+    for (const_iterator i = begin (); i != end (); i++)
+        number++;
+
+    return number;
 }
 
 // Returns the number of elements in a map whose key matches a parameter-specified key.
 TreeMap::size_type TreeMap::count (const Key& _Key) const {
-    ///@todo Implement this
+    if (find (_Key) == end ())
+        return 0;
+
     return 1;  // this is not a multimap
 }
 
@@ -157,28 +166,64 @@ TreeMap::iterator TreeMap::erase (TreeMap::iterator f, TreeMap::iterator l) {
 // @returns The number of elements that have been removed from the map.
 //          Since this is not a multimap itshould be 1 or 0.
 TreeMap::size_type TreeMap::erase (const Key& key) {
-    ///@todo Implement this
-    assert (0);
+    iterator toKill = find (key);
+
+    if (toKill != end ()) {
+        erase (toKill);
+        return 1;
+    }
+
     return 0;
 }
 
 // Erases all the elements of a map.
 void TreeMap::clear () {
     TreeMapDetail::erase (this, 0);
-    ///@todo Implement this
-    assert (0);
+
+    erase (begin (), end ());
 }
 
 bool TreeMap::struct_eq (const TreeMap& another) const {
-    ///@todo Implement this
-    assert (0);
-    return false;
+    if (size () != another.size ())
+        return false;
+
+    const_iterator thisIterator = begin ();
+    const_iterator anotherIterator = another.begin ();
+
+    while (thisIterator != end ()) {
+
+        if (thisIterator.node->data != anotherIterator.node->data)
+            return false;
+
+        ++thisIterator;
+        ++anotherIterator;
+    }
+
+    return true;
 }
 
+//@ACHTUNG kk this is so random i dont believe its actually gonna work, but its good for start
 bool TreeMap::info_eq (const TreeMap& another) const {
-    ///@todo Implement this
-    assert (0);
-    return false;
+    if (size () != another.size ())
+        return false;
+
+    const_iterator thisIterator = begin ();
+
+    while (thisIterator != end ()) {
+
+        if (another.find (thisIterator->first) == another.end () || another.find (thisIterator->first)->second != thisIterator->second) {
+            std::cout << "\nWykrzaczing with parameters:\n"
+                << "another.find (thisIterator->first) == another.end () has value of: " << (another.find (thisIterator->first) == another.end ())
+                << "\nanother.find (thisIterator->first)->second != thisIterator->second) has value of: " << (another.find (thisIterator->first)->second != thisIterator->second)
+                << "\n\nWykrzaczejszyn executed for parameters:"
+                << "\nFor this: key == " << thisIterator->first << ", value == " << thisIterator->second << "\n\n";
+            return false;
+        }
+
+        thisIterator++;
+    }
+
+    return true;
 }
 
 // preincrement
@@ -189,8 +234,9 @@ TreeMap::const_iterator& TreeMap::const_iterator::operator ++() {
 
 // postincrement
 TreeMap::const_iterator TreeMap::const_iterator::operator++(int) {
-    ///@todo Implement this
-    return *this;
+    const_iterator notIncremented (node);    //Trzeba zinkrementowac, ale zwrocic sprzed inkrementacji
+    ++(*this);
+    return notIncremented;
 }
 
 // predecrement
@@ -201,8 +247,9 @@ TreeMap::const_iterator& TreeMap::const_iterator::operator--() {
 
 // postdecrement
 TreeMap::const_iterator TreeMap::const_iterator::operator--(int) {
-    ///@todo Implement this
-    return *this;
+    const_iterator notDecremented (node);
+    --(*this);
+    return notDecremented;
 }
 
 
@@ -214,13 +261,23 @@ TreeMap& TreeMap::operator=(const TreeMap& other) {
 
 /// Returns an iterator addressing the first element in the map
 TreeMap::iterator TreeMap::begin () {
-    ///@todo Implement this
-    return iterator (NULL);
+    Node * actualNode = root;
+
+    while (actualNode->left != NULL) {
+        actualNode = actualNode->left;
+    }
+
+    return iterator (actualNode);
 }
 
 TreeMap::const_iterator TreeMap::begin () const {
-    ///@todo Implement this
-    return iterator (NULL);
+    Node * actualNode = root;
+
+    while (actualNode->left != NULL) {
+        actualNode = actualNode->left;
+    }
+
+    return const_iterator (actualNode);
 }
 
 /// Returns an iterator that addresses the location succeeding the last element in a map
@@ -259,7 +316,7 @@ void test () {
 
     m[2] = "Merry";
     m[4] = "Jane";
-    m[8] = "Korwin";
+    m[8] = "Korwin Krul";
     m[4] = "Magdalena";
 
     for_each (m.begin (), m.end (), print);
