@@ -56,8 +56,21 @@ protected:
 // TreeMap and TreeMap::iterator methods
 //////////////////////////////////////////////////////////////////////////////
 
+/*ToDo:
+ -> konstruktorki
+ -> ew destruktorka, w zaleznosci od rozwiazania kwiestii roota
+ -> unsafe_insert
+ -> findy
+ -> erase
+ -> =
+ -> end
+ -> eqi prawie napewno sie sypna :c*/
+
+
 TreeMap::TreeMap () {
     root = NULL;
+    TreeNode * sentinel = new TreeNode (std::make_pair(DEFAULT_KEY, DEFAULT_VALUE));
+    sentinel->left = root;
 };
 
 /// Content of existing TreeMap object is copied into the new object. 
@@ -228,7 +241,30 @@ bool TreeMap::info_eq (const TreeMap& another) const {
 
 // preincrement
 TreeMap::const_iterator& TreeMap::const_iterator::operator ++() {
-    ///@todo Implement this
+    if (node->parent == NULL)
+        return *this;
+
+    if (node->right != NULL) {
+        node = node->right;
+        
+        while (node->left != NULL) {
+            node = node->left;
+        }
+        
+        return *this;
+    }
+
+    if (node->parent->left == node) {
+        node = node->parent;
+        return *this;
+    }
+
+    //return end:
+    do {                       //zrobic tak, ze root to left sentinela zapamietaj!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        node = node->parent;
+    }
+    while (node->parent->right == node);
+
     return *this;
 }
 
@@ -241,7 +277,29 @@ TreeMap::const_iterator TreeMap::const_iterator::operator++(int) {
 
 // predecrement
 TreeMap::const_iterator& TreeMap::const_iterator::operator--() {
-    ///@todo Implement this
+    if (node->parent == NULL) {                 //if end we must reach last elemento
+        node = node->left;
+        while (node->right != NULL) {
+            node = node->right;
+        }
+    }
+
+    if (node->left != NULL) {
+        node = node->left;
+
+        while (node->right != NULL) {
+            node = node->right;
+        }
+
+        return *this;
+    }
+
+    if (node->parent->right == node) {
+        node = node->parent;
+        return *this;
+    }
+
+    //first element, return itself:
     return *this;
 }
 
