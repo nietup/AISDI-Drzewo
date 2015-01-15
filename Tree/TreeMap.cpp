@@ -56,6 +56,27 @@ protected:
     TreeMap::Node * getSentinel () {
         return sentinel;
     }
+
+    void copy (const TreeNode* from, TreeNode* toParent, bool lessThan) {
+
+        if (from == NULL)
+            return;
+
+        TreeNode* newNode = new TreeNode (from->data, toParent);
+
+        if (lessThan) {
+            if (toParent != NULL)
+                toParent->left = newNode;
+        }
+
+        else {
+            if (toParent != NULL)
+                toParent->right = newNode;
+        }
+
+        copy (from->left, newNode, true);
+        copy (from->right, newNode, false);
+    }
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -65,8 +86,7 @@ protected:
 /*ToDo:
  -> konstruktorkek kksijjacu
  -> erase
- -> =
-*/
+ */
 
 /*
 Koncepcja:
@@ -386,7 +406,12 @@ TreeMap::const_iterator TreeMap::const_iterator::operator--(int) {
 
 /// Assignment operator copy the source elements into this object.
 TreeMap& TreeMap::operator=(const TreeMap& other) {
-    ///@todo Implement this
+    if (*this == other) return *this;
+
+    this->clear ();
+
+    detail->copy (other.root, detail->getSentinel (), true);
+
     return *this;
 }
 
