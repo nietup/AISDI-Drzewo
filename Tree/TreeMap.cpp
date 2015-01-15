@@ -43,12 +43,14 @@ class TreeMapDetail //Helper
 {
 protected:
     friend class TreeMap;
+    TreeMap::Node * sentinel;
 
-    /// Stupid example of a method that modifies a protected field in 
-    /// the TreeMap class. Feel free to remove this method or add new
-    /// ones here.
-    static void erase (TreeMap* tm, const TreeMap::Key& k) {
-        tm->root = NULL; // we just modified a protected field in tree map
+    void setSentinel (TreeMap::Node * newSentinel) {
+        sentinel = newSentinel;
+    }
+
+    TreeMap::Node * getSentinel () {
+        return sentinel;
     }
 };
 
@@ -57,20 +59,26 @@ protected:
 //////////////////////////////////////////////////////////////////////////////
 
 /*ToDo:
- -> konstruktorki
+ -> konstruktorkek kksijjacu
  -> ew destruktorka, w zaleznosci od rozwiazania kwiestii roota
- -> unsafe_insert
- -> findy
  -> erase
- -> =
- -> end
- -> eqi prawie napewno sie sypna :c*/
+ -> =*/
+
+/*
+Koncepcja:
+root jest zwyklym nodem przechowujacym wartosc
+jego parentem jest straznik
+left straznika to rool, right to NULL
+w sumie nie ma to za wiele sensu, ale juz tak zaczalem wiec sie tego trzymam
+*/
 
 
 TreeMap::TreeMap () {
     root = NULL;
-    TreeNode * sentinel = new TreeNode (std::make_pair(DEFAULT_KEY, DEFAULT_VALUE));
+    TreeNode * sentinel = new TreeNode (std::make_pair (DEFAULT_KEY, DEFAULT_VALUE));
     sentinel->left = root;
+    detail = new TreeMapDetail ();
+    detail->setSentinel (sentinel);
 };
 
 /// Content of existing TreeMap object is copied into the new object. 
@@ -102,24 +110,86 @@ std::pair<TreeMap::iterator, bool> TreeMap::insert (const std::pair<Key, Val>& e
 // such a key in the map.
 
 TreeMap::iterator TreeMap::unsafe_insert (const std::pair<Key, Val>& entry) {
-    ///@todo  Finnish this
-    assert (0);
-    return iterator (root);
+    Node * currentNode = root;
+
+    if (root == NULL) {
+        root = new Node (entry);
+        root->parent = detail->getSentinel ();
+        return iterator (root);
+    }
+
+    while (true) {
+        if (currentNode->data.first > entry.first) {
+            if (currentNode->left != NULL)
+                currentNode = currentNode->left;
+            else {
+                Node * newNode = new Node (entry);
+                newNode->parent = currentNode;
+                currentNode->left = newNode;
+                return iterator (newNode);
+            }
+        }
+
+        else if (currentNode->data.first < entry.first) {
+            if (currentNode->right != NULL)
+                currentNode = currentNode->right;
+            else {
+                Node * newNode = new Node (entry);
+                newNode->parent = currentNode;
+                currentNode->right = newNode;
+                return iterator (newNode);
+            }
+        }
+    }
 }
 
 // Returns an iterator addressing the location of the entry in the map
 // that has a key equivalent to the specified one or the location succeeding the
 // last element in the map if there is no match for the key.
 TreeMap::iterator TreeMap::find (const Key& k) {
-    ///@todo Implement this
-    assert (0);
-    return end ();
+    Node * currentNode = root;
+
+    while (true) {
+        if (currentNode->data.first == k)
+            return iterator (currentNode);
+
+        if (currentNode->data.first > k) {
+            if (currentNode->left != NULL)
+                currentNode = currentNode->left;
+            else
+                return end ();
+        }
+
+        else if (currentNode->data.first < k) {
+            if (currentNode->right != NULL)
+                currentNode = currentNode->right;
+            else
+                return end ();
+        }
+    }
 }
 
 TreeMap::const_iterator TreeMap::find (const Key& k) const {
-    ///@todo Implement this
-    assert (0);
-    return end ();
+    Node * currentNode = root;
+
+    while (true) {
+        if (currentNode->data.first == k)
+            return const_iterator (currentNode);
+
+        if (currentNode->data.first > k) {
+            if (currentNode->left != NULL)
+                currentNode = currentNode->left;
+            else
+                return end ();
+        }
+
+        else if (currentNode->data.first < k) {
+            if (currentNode->right != NULL)
+                currentNode = currentNode->right;
+            else
+                return end ();
+        }
+    }
 }
 
 // Inserts an element into a map with a specified key value
@@ -191,7 +261,7 @@ TreeMap::size_type TreeMap::erase (const Key& key) {
 
 // Erases all the elements of a map.
 void TreeMap::clear () {
-    TreeMapDetail::erase (this, 0);
+    //TreeMapDetail::erase (this, 0);
 
     erase (begin (), end ());
 }
@@ -246,11 +316,11 @@ TreeMap::const_iterator& TreeMap::const_iterator::operator ++() {
 
     if (node->right != NULL) {
         node = node->right;
-        
+
         while (node->left != NULL) {
             node = node->left;
         }
-        
+
         return *this;
     }
 
@@ -340,14 +410,12 @@ TreeMap::const_iterator TreeMap::begin () const {
 
 /// Returns an iterator that addresses the location succeeding the last element in a map
 TreeMap::iterator TreeMap::end () {
-    ///@todo Implement this
-    return iterator (NULL);
+    return iterator (root->parent);
 }
 
 /// Returns an iterator that addresses the location succeeding the last element in a map
 TreeMap::const_iterator TreeMap::end () const {
-    ///@todo Implement this
-    return iterator (NULL);
+    return const_iterator (root->parent);
 }
 
 //////////////////////////////////////////////////////////////////////////////
