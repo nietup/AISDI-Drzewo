@@ -39,8 +39,12 @@ static TreeMap::Val DEFAULT_VALUE = "Automatically generated node";
 static TreeMap::Key DEFAULT_KEY = -1;
 
 /// A helper class.
-class TreeMapDetail //Helper
-{
+class TreeMapDetail {                       //Helper
+public:
+    ~TreeMapDetail () {
+        delete (sentinel);
+    }
+
 protected:
     friend class TreeMap;
     TreeMap::Node * sentinel;
@@ -60,9 +64,9 @@ protected:
 
 /*ToDo:
  -> konstruktorkek kksijjacu
- -> ew destruktorka, w zaleznosci od rozwiazania kwiestii roota
  -> erase
- -> =*/
+ -> =
+*/
 
 /*
 Koncepcja:
@@ -88,6 +92,7 @@ TreeMap::TreeMap (const TreeMap& m) {
 
 TreeMap::~TreeMap () {
     clear ();
+    delete (detail);
 };
 
 // Inserts an element into the map.
@@ -261,8 +266,6 @@ TreeMap::size_type TreeMap::erase (const Key& key) {
 
 // Erases all the elements of a map.
 void TreeMap::clear () {
-    //TreeMapDetail::erase (this, 0);
-
     erase (begin (), end ());
 }
 
