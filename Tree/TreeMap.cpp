@@ -84,7 +84,6 @@ protected:
 //////////////////////////////////////////////////////////////////////////////
 
 /*ToDo:
- -> konstruktorkek kksijjacu
  -> erase
  */
 
@@ -107,7 +106,9 @@ TreeMap::TreeMap () {
 
 /// Content of existing TreeMap object is copied into the new object. 
 TreeMap::TreeMap (const TreeMap& m) {
-    ///@todo Implement this
+    TreeNode * sentinel = new TreeNode (std::make_pair (DEFAULT_KEY, DEFAULT_VALUE));
+    detail = new TreeMapDetail ();
+    detail->copy (m.root, sentinel, true);
 };
 
 TreeMap::~TreeMap () {
@@ -255,9 +256,84 @@ TreeMap::size_type TreeMap::count (const Key& _Key) const {
 // Removes an element from the map.
 // @returns The iterator that designates the first element remaining beyond any elements removed.
 TreeMap::iterator TreeMap::erase (TreeMap::iterator i) {
-    ///@todo Implement this
-    assert (0);
-    return end ();
+    if (i == end ())
+        return i;
+
+    iterator returnIterator (i);
+    returnIterator++;
+
+    //najprostrzy przypadek
+    if (i.node->left == NULL && i.node->right == NULL) {
+
+        if (i.node == i.node->parent->left)
+            i.node->parent->left = NULL;
+        else
+            i.node->parent->right = NULL;
+
+        delete (i.node);
+        return returnIterator;
+    }
+
+    //jedna raczka wolna
+    if (i.node->left == NULL && i.node->right != NULL) {
+        if (i.node == i.node->parent->left)
+            i.node->parent->left = i.node->right;
+        else
+            i.node->parent->right = i.node->right;
+
+        i.node->right->parent = i.node->parent;
+        delete (i.node);
+        return returnIterator;
+    }
+
+    if (i.node->left != NULL && i.node->right == NULL) {
+
+        if (i.node == i.node->parent->left)
+            i.node->parent->left = i.node->right;
+        else
+            i.node->parent->right = i.node->right;
+
+        i.node->left->parent = i.node->parent;
+        delete (i.node);
+        return returnIterator;
+    }
+
+    //najgorszy przypadek: obie raczki zajete :c
+    Node * temporaryNode = i.node->right;
+
+    while (temporaryNode->left != NULL)
+        temporaryNode = temporaryNode->left;
+
+    //spr czy przenoszony wezel ma synka:
+    if (temporaryNode->right != NULL) {
+        temporaryNode->parent->left = temporaryNode->right;
+        temporaryNode->parent = i.node->parent;
+        temporaryNode->left = i.node->left;
+        temporaryNode->right = i.node->right;
+
+        if (i.node == i.node->parent->left)
+            i.node->parent->left = temporaryNode;
+        else
+            i.node->parent->right = temporaryNode;
+
+        delete (i.node);
+        return returnIterator;
+    }
+
+    else {
+        temporaryNode->parent->left = NULL;
+        temporaryNode->parent = i.node->parent;
+        temporaryNode->left = i.node->left;
+        temporaryNode->right = i.node->right;
+
+        if (i.node == i.node->parent->left)
+            i.node->parent->left = temporaryNode;
+        else
+            i.node->parent->right = temporaryNode;
+
+        delete (i.node);
+        return returnIterator;
+    }
 }
 
 // Removes a range of elements from the map.
@@ -265,9 +341,9 @@ TreeMap::iterator TreeMap::erase (TreeMap::iterator i) {
 // first is the first element removed and last is the element just beyond the last elemnt removed.
 // @returns The iterator that designates the first element remaining beyond any elements removed.
 TreeMap::iterator TreeMap::erase (TreeMap::iterator f, TreeMap::iterator l) {
-    ///@todo Implement this
-    assert (0);
-    return end ();
+    while (f != l)
+        f = erase (f);
+    return l;
 }
 
 // Removes an element from the map.
