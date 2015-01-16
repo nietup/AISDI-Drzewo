@@ -132,13 +132,15 @@ std::pair<TreeMap::iterator, bool> TreeMap::insert (const std::pair<Key, Val>& e
 // such a key in the map.
 
 TreeMap::iterator TreeMap::unsafe_insert (const std::pair<Key, Val>& entry) {
-    Node * currentNode = root;
 
     if (root == NULL) {
         root = new Node (entry);
         root->parent = detail->getSentinel ();
+        (detail->getSentinel ())->left = root;              //dla pewnoœci
         return iterator (root);
     }
+
+    Node * currentNode = root;
 
     while (true) {
         if (currentNode->data.first > entry.first) {
@@ -170,7 +172,7 @@ TreeMap::iterator TreeMap::unsafe_insert (const std::pair<Key, Val>& entry) {
 // last element in the map if there is no match for the key.
 TreeMap::iterator TreeMap::find (const Key& k) {
     Node * currentNode = root;
-    
+
     if (root == NULL)
         return end ();
 
@@ -490,7 +492,8 @@ TreeMap& TreeMap::operator=(const TreeMap& other) {
 
 /// Returns an iterator addressing the first element in the map
 TreeMap::iterator TreeMap::begin () {
-    Node * actualNode = root;
+
+    Node * actualNode = detail->getSentinel();
 
     while (actualNode->left != NULL) {
         actualNode = actualNode->left;
@@ -500,7 +503,8 @@ TreeMap::iterator TreeMap::begin () {
 }
 
 TreeMap::const_iterator TreeMap::begin () const {
-    Node * actualNode = root;
+
+    Node * actualNode = detail->getSentinel ();
 
     while (actualNode->left != NULL) {
         actualNode = actualNode->left;
@@ -511,7 +515,7 @@ TreeMap::const_iterator TreeMap::begin () const {
 
 /// Returns an iterator that addresses the location succeeding the last element in a map
 TreeMap::iterator TreeMap::end () {
-    return iterator (detail->getSentinel());
+    return iterator (detail->getSentinel ());
 }
 
 /// Returns an iterator that addresses the location succeeding the last element in a map
@@ -545,12 +549,14 @@ void test () {
     m[4] = "Jane";
     m[8] = "Korwin Krul";
     m[4] = "Magdalena";
+    m[9] = "Palikot";
 
     for_each (m.begin (), m.end (), print);
-    //system("PAUSE");
 
-    //std::cout << m[2];
+    m.erase ((m.begin ())++);
 
+    std::cout << "\n--------------\n";
+    for_each (m.begin (), m.end (), print);
 }
 
 //////////////////////////////////////////////////////////////////////////////
