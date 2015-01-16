@@ -83,10 +83,6 @@ protected:
 // TreeMap and TreeMap::iterator methods
 //////////////////////////////////////////////////////////////////////////////
 
-/*ToDo:
- -> erase
- */
-
 /*
 Koncepcja:
 root jest zwyklym nodem przechowujacym wartosc
@@ -174,6 +170,9 @@ TreeMap::iterator TreeMap::unsafe_insert (const std::pair<Key, Val>& entry) {
 // last element in the map if there is no match for the key.
 TreeMap::iterator TreeMap::find (const Key& k) {
     Node * currentNode = root;
+    
+    if (root == NULL)
+        return end ();
 
     while (true) {
         if (currentNode->data.first == k)
@@ -410,7 +409,7 @@ bool TreeMap::info_eq (const TreeMap& another) const {
 
 // preincrement
 TreeMap::const_iterator& TreeMap::const_iterator::operator ++() {
-    if (node->parent == NULL)
+    if (node->parent == NULL)   //end
         return *this;
 
     if (node->right != NULL) {
@@ -429,10 +428,8 @@ TreeMap::const_iterator& TreeMap::const_iterator::operator ++() {
     }
 
     //return end:
-    do {                       //zrobic tak, ze root to left sentinela zapamietaj!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    while (node->parent != NULL)    // w ten sposob dojdziemy do enda
         node = node->parent;
-    }
-    while (node->parent->right == node);
 
     return *this;
 }
@@ -514,12 +511,12 @@ TreeMap::const_iterator TreeMap::begin () const {
 
 /// Returns an iterator that addresses the location succeeding the last element in a map
 TreeMap::iterator TreeMap::end () {
-    return iterator (root->parent);
+    return iterator (detail->getSentinel());
 }
 
 /// Returns an iterator that addresses the location succeeding the last element in a map
 TreeMap::const_iterator TreeMap::end () const {
-    return const_iterator (root->parent);
+    return const_iterator (detail->getSentinel ());
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -542,7 +539,7 @@ void test () {
 
     std::cout << "Testy uzytkownika" << std::endl;
 
-    TEST_MAP m;
+    TreeMap m;
 
     m[2] = "Merry";
     m[4] = "Jane";
@@ -551,6 +548,8 @@ void test () {
 
     for_each (m.begin (), m.end (), print);
     //system("PAUSE");
+
+    //std::cout << m[2];
 
 }
 
