@@ -30,8 +30,8 @@ ALL RIGHTS RESERVED
 #include "stdafx.h"
 #include <assert.h>
 #include <algorithm>
-
 #include <iostream>
+#include <time.h>
 
 #include "TreeMap.h"
 
@@ -104,6 +104,7 @@ TreeMap::TreeMap () {
 TreeMap::TreeMap (const TreeMap& m) {
     TreeNode * sentinel = new TreeNode (std::make_pair (DEFAULT_KEY, DEFAULT_VALUE));
     detail = new TreeMapDetail ();
+    detail->setSentinel (sentinel);
     detail->copy (m.root, sentinel, true);
 };
 
@@ -197,6 +198,9 @@ TreeMap::iterator TreeMap::find (const Key& k) {
 }
 
 TreeMap::const_iterator TreeMap::find (const Key& k) const {
+    if (root == NULL)
+        return end ();
+
     Node * currentNode = root;
 
     while (true) {
@@ -260,11 +264,11 @@ TreeMap::iterator TreeMap::erase (TreeMap::iterator i) {
     if (i == end ())
         return i;
 
-    iterator returnIterator (i);
-    returnIterator++;
+    iterator returnIterator = i;
 
     //najprostrzy przypadek
     if (i.node->left == NULL && i.node->right == NULL) {
+        returnIterator++;
 
         if (i.node == i.node->parent->left)
             i.node->parent->left = NULL;
@@ -277,6 +281,8 @@ TreeMap::iterator TreeMap::erase (TreeMap::iterator i) {
 
     //jedna raczka wolna
     if (i.node->left == NULL && i.node->right != NULL) {
+        returnIterator++;
+
         if (i.node == i.node->parent->left)
             i.node->parent->left = i.node->right;
         else
@@ -288,11 +294,12 @@ TreeMap::iterator TreeMap::erase (TreeMap::iterator i) {
     }
 
     if (i.node->left != NULL && i.node->right == NULL) {
+        returnIterator++;
 
         if (i.node == i.node->parent->left)
-            i.node->parent->left = i.node->right;
+            i.node->parent->left = i.node->left;
         else
-            i.node->parent->right = i.node->right;
+            i.node->parent->right = i.node->left;
 
         i.node->left->parent = i.node->parent;
         delete (i.node);
@@ -300,6 +307,8 @@ TreeMap::iterator TreeMap::erase (TreeMap::iterator i) {
     }
 
     //najgorszy przypadek: obie raczki zajete :c
+    returnIterator++;
+
     Node * temporaryNode = i.node->right;
 
     while (temporaryNode->left != NULL)
@@ -307,22 +316,36 @@ TreeMap::iterator TreeMap::erase (TreeMap::iterator i) {
 
     //spr czy przenoszony wezel ma synka:
     if (temporaryNode->right != NULL) {
-        temporaryNode->parent->left = temporaryNode->right;
-        temporaryNode->parent = i.node->parent;
+        if (temporaryNode == temporaryNode->parent->left)           //przepiecie od rodzice
+            temporaryNode->parent->left = temporaryNode->right;
+        else
+            temporaryNode->parent->right = temporaryNode->right;
+
+        temporaryNode->right->parent = temporaryNode->parent;       //przepiecie od synka
+
+        temporaryNode->parent = i.node->parent;                     //wpiecie zamiennika
         temporaryNode->left = i.node->left;
         temporaryNode->right = i.node->right;
 
-        if (i.node == i.node->parent->left)
+        if (i.node == i.node->parent->left)                         //nowy rodzic
             i.node->parent->left = temporaryNode;
         else
             i.node->parent->right = temporaryNode;
+
+        //synki
+        i.node->left->parent = temporaryNode;
+        i.node->right->parent = temporaryNode;
 
         delete (i.node);
         return returnIterator;
     }
 
     else {
-        temporaryNode->parent->left = NULL;
+        if (temporaryNode == temporaryNode->parent->left)           //przepiecie od rodzice
+            temporaryNode->parent->left = NULL;
+        else
+            temporaryNode->parent->right = NULL;
+
         temporaryNode->parent = i.node->parent;
         temporaryNode->left = i.node->left;
         temporaryNode->right = i.node->right;
@@ -331,6 +354,9 @@ TreeMap::iterator TreeMap::erase (TreeMap::iterator i) {
             i.node->parent->left = temporaryNode;
         else
             i.node->parent->right = temporaryNode;
+
+        i.node->left->parent = temporaryNode;
+        i.node->right->parent = temporaryNode;
 
         delete (i.node);
         return returnIterator;
@@ -342,7 +368,7 @@ TreeMap::iterator TreeMap::erase (TreeMap::iterator i) {
 // first is the first element removed and last is the element just beyond the last elemnt removed.
 // @returns The iterator that designates the first element remaining beyond any elements removed.
 TreeMap::iterator TreeMap::erase (TreeMap::iterator f, TreeMap::iterator l) {
-    while (f != l)
+    while (f.node->data != l.node->data)
         f = erase (f);
     return l;
 }
@@ -395,11 +421,11 @@ bool TreeMap::info_eq (const TreeMap& another) const {
     while (thisIterator != end ()) {
 
         if (another.find (thisIterator->first) == another.end () || another.find (thisIterator->first)->second != thisIterator->second) {
-            std::cout << "\nWykrzaczing with parameters:\n"
+            /*std::cout << "\nWykrzaczing with parameters:\n"
                 << "another.find (thisIterator->first) == another.end () has value of: " << (another.find (thisIterator->first) == another.end ())
                 << "\nanother.find (thisIterator->first)->second != thisIterator->second) has value of: " << (another.find (thisIterator->first)->second != thisIterator->second)
                 << "\n\nWykrzaczejszyn executed for parameters:"
-                << "\nFor this: key == " << thisIterator->first << ", value == " << thisIterator->second << "\n\n";
+                << "\nFor this: key == " << thisIterator->first << ", value == " << thisIterator->second << "\n\n";*/
             return false;
         }
 
@@ -430,8 +456,9 @@ TreeMap::const_iterator& TreeMap::const_iterator::operator ++() {
     }
 
     //return end:
-    while (node->parent != NULL)    // w ten sposob dojdziemy do enda
+    while (node->parent->right == node)    // w ten sposob dojdziemy do enda
         node = node->parent;
+    node = node->parent;                   //root to left enda
 
     return *this;
 }
@@ -446,10 +473,16 @@ TreeMap::const_iterator TreeMap::const_iterator::operator++(int) {
 // predecrement
 TreeMap::const_iterator& TreeMap::const_iterator::operator--() {
     if (node->parent == NULL) {                 //if end we must reach last elemento
+        if (node->left == NULL)
+            return *this;
+
         node = node->left;
+
         while (node->right != NULL) {
             node = node->right;
         }
+
+        return *this;
     }
 
     if (node->left != NULL) {
@@ -467,7 +500,17 @@ TreeMap::const_iterator& TreeMap::const_iterator::operator--() {
         return *this;
     }
 
-    //first element, return itself:
+    Node * SafeNode = node;          //lista nie jest cykliczna wiec jesli damy -- na siebie to jestesmy dalej soba
+
+    while (node->parent->left == node)
+        node = node->parent;
+
+    if (node->parent != NULL)
+        node = node->parent;
+
+    else
+        node = SafeNode;
+
     return *this;
 }
 
@@ -493,7 +536,7 @@ TreeMap& TreeMap::operator=(const TreeMap& other) {
 /// Returns an iterator addressing the first element in the map
 TreeMap::iterator TreeMap::begin () {
 
-    Node * actualNode = detail->getSentinel();
+    Node * actualNode = detail->getSentinel ();
 
     while (actualNode->left != NULL) {
         actualNode = actualNode->left;
@@ -536,27 +579,168 @@ void print (const std::pair<int, std::string>& p) {
 
 /// The big mean test function ;)
 void test () {
-    // A typedef used by the test.
-    typedef std::map<int, std::string> TEST_MAP;
-    //typedef SmallMap<int, std::string> TEST_MAP;
-    //typedef TreeMap TEST_MAP;
-
     std::cout << "Testy uzytkownika" << std::endl;
 
-    TreeMap m;
+    /*TreeMap m;
 
     m[2] = "Merry";
     m[4] = "Jane";
     m[8] = "Korwin Krul";
     m[4] = "Magdalena";
     m[9] = "Palikot";
+    for (int i = 10; i < 20; i++) m[i];
 
     for_each (m.begin (), m.end (), print);
 
-    m.erase ((m.begin ())++);
+    TreeMap::iterator testIterator1, testIterator2;
+
+    testIterator1 = testIterator2 = ++(m.begin ());
+
+    for (int i = 0; i < 7; i++)
+    ++testIterator2;
 
     std::cout << "\n--------------\n";
-    for_each (m.begin (), m.end (), print);
+    for_each (testIterator1, testIterator2, print);
+
+    m.erase (testIterator1, testIterator2);
+
+    std::cout << "\n--------------\n";
+    for_each (m.begin (), m.end (), print);*/
+
+    std::cout << "\n--------------\n" << "TESTY RADKA:\n";
+
+    typedef TreeMap TEST_MAP;
+    typedef std::pair<int, std::string> Pair;
+    std::cout << "Dzieñ dobry." << std::endl;
+    TEST_MAP m;
+    m[2] = "Trurl";
+    m[4] = "Klapacjusz";
+    m[1000] = "Tarantoga";
+    m[3] = "Ilon";
+    m[1] = "Automateusz";
+    m[10] = "Dobrycy";
+
+    std::cout << "Wielkoœæ: " << m.size () << std::endl;
+    std::cout << "Szukam Klapacjusza: " << m.find (4)->second << std::endl;
+    std::cout << "Szukam Trurla: " << m.find (2)->second << std::endl;
+    std::cout << "Szukam Nieistniej¹cego: " << m.find (-21)->second << std::endl;
+
+    std::cout << "Druga, nowa mapa, te same wartoœci, inna metoda wstawiania." << std::endl;
+    TEST_MAP m2;
+    m2.insert (Pair (2, "Trurl"));
+    m2.insert (Pair (4, "Klapacjusz"));
+    m2.insert (Pair (1000, "Tarantoga"));
+    m2.insert (Pair (3, "Ilon"));
+    m2.insert (Pair (1, "Automateusz"));
+    m2.insert (Pair (10, "Dobrycy"));
+    std::cout << "Strukturalnie równe?: " << m.struct_eq (m2) << std::endl;
+    std::cout << "Zawartoœciowo równe?: " << m.info_eq (m2) << std::endl;
+
+    std::cout << "Trzecia mapa, zamieniona kolejnoœæ." << std::endl;
+    TEST_MAP m3;
+    m3[2] = "Trurl";
+    m3[4] = "Klapacjusz";
+    m3[3] = "Ilon";
+    m3[1] = "Automateusz";
+    m3[10] = "Dobrycy";
+    m3[1000] = "Tarantoga";
+    std::cout << "Strukturalnie równe?: " << m.struct_eq (m3) << std::endl;
+    std::cout << "Zawartoœciowo równe?: " << m.info_eq (m3) << std::endl;
+
+    std::cout << "Czwarta mapa, konstruktor kopiuj¹cy" << std::endl;
+    TEST_MAP m4 (m);
+    for (TreeMap::iterator i = m4.begin (); i != m4.end (); i++) {
+        std::cout << i->first << " ==> " << i->second << std::endl;
+    }
+    std::cout << "Strukturalnie równe?: " << m.struct_eq (m4) << std::endl;
+    std::cout << "Zawartoœciowo równe?: " << m.info_eq (m4) << std::endl;
+
+    std::cout << "Pi¹ta mapa, podstawienie" << std::endl;
+    TEST_MAP m5, m6;
+    m5 = m;
+    m6 = m;
+    m5 = m6;
+    m6 = m6; //B£¥D!!! Siedzia³em nad tym do 3.00!
+    for (TreeMap::iterator i = m5.begin (); i != m5.end (); i++) {
+        std::cout << i->first << " ==> " << i->second << std::endl;
+    }
+    std::cout << "Strukturalnie równe?: " << m.struct_eq (m5) << std::endl;
+    std::cout << "Zawartoœciowo równe?: " << m.info_eq (m5) << std::endl;
+
+
+    for (TreeMap::iterator i = m6.begin (); i != m6.end (); i++) {
+        std::cout << i->first << " ==> " << i->second << std::endl;
+    }
+    std::cout << "Strukturalnie równe?: " << m.struct_eq (m6) << std::endl;
+    std::cout << "Zawartoœciowo równe?: " << m.info_eq (m6) << std::endl;
+
+    std::cout << "Dodanie nowej wartoœci:" << std::endl;
+    std::pair<TreeMap::iterator, bool> exitPair = m.insert (Pair (551, "Gêbon"));
+    std::cout << "Czy i co dodano: " << exitPair.second << " " << exitPair.first->first << " ==> " << exitPair.first->second << std::endl;
+    std::cout << "Próba dodania istniej¹cej wartoœci:" << std::endl;
+    exitPair = m.insert (Pair (1, "Automateusz"));
+    std::cout << "Czy i co by³o by dodane: " << exitPair.second << " " << exitPair.first->first << " ==> " << exitPair.first->second << std::endl;
+
+    std::cout << "U¿ywanie losowych liczb i sprawdzenie operatora ++" << std::endl;
+    TEST_MAP mr;
+    srand (time (NULL));
+    for (int i = 0; i < 100; i++) {
+        int r = rand () % 1000;
+        mr[r] = "Wartoœæ losowa";
+    }
+    for (TreeMap::iterator i = mr.begin (); i != mr.end (); i++) {
+        std::cout << i->first << " ";
+    }
+    std::cout << std::endl << "To prawie, jak sortowanie!" << std::endl;
+    std::cout << "A teraz w drug¹ stronê (bez begin)" << std::endl;
+
+    for (TreeMap::iterator i = --mr.end (); i != mr.begin (); i--) {
+        std::cout << i->first << " ";
+    }
+    std::cout << std::endl << "To by³o wolne..." << std::endl;
+    std::cout << "Zbiór pierwotny:" << std::endl;
+    for (TreeMap::iterator i = m.begin (); i != m.end (); i++) {
+    std::cout << i->first << " ==> " << i->second << std::endl;
+    }
+    std::cout << "Wielkoœæ: " << m.size () << std::endl;
+    std::cout << "Usuniêcie Ilona Tichiego" << std::endl;
+    m.erase (m.find (3));
+    std::cout << "Usuniêcie Automateusza (pos³ucha³ przyjaciela)" << std::endl;
+    m.erase (1);
+    std::cout << "Usuniêcie nieistniej¹cego" << std::endl;
+    m.erase (m.find (666));
+    for (TreeMap::iterator i = m.begin (); i != m.end (); i++) {
+    std::cout << i->first << " ==> " << i->second << std::endl;
+    }
+    std::cout << "Wielkoœæ: " << m.size () << std::endl;
+    std::cout << "Usuniêcie Klapacjusza i nastêpnego po nim" << std::endl;
+    m.erase (m.erase (m.find (4)));
+    for (TreeMap::iterator i = m.begin (); i != m.end (); i++) {
+    std::cout << i->first << " ==> " << i->second << std::endl;
+    }
+    std::cout << "Wielkoœæ: " << m.size () << std::endl;
+
+    std::cout << "Usuniêcie Œrodkowych" << std::endl;
+    for (TreeMap::iterator i = m2.begin (); i != m2.end (); i++) {
+    std::cout << i->first << " ==> " << i->second << std::endl;
+    }
+    std::cout << "Od Trurla do Dobrycego" << std::endl;
+    m2.erase (m2.find (2), m2.find (10));
+    for (TreeMap::iterator i = m2.begin (); i != m2.end (); i++) {
+    std::cout << i->first << " ==> " << i->second << std::endl;
+    }
+    std::cout << "Kontrola wycieków, obserwuj proces" << std::endl;
+    TEST_MAP ml;
+    return;
+    for (int i = 0; i < 1000; i++) {
+    std::cout << '.' << std::flush;
+    for (int j = 0; j < 2000; j++) {
+    ml[j] = "ALESUPERD£UGANAZWAPOTO¯EBYZAPCHAÆPAMIÊÆJAKNAJSZYBCIEJOCHWYGLADANATOZETROCHEMIWYCIEKAMAMNADZIEJEZENIKTNIEZAUWAZY";
+    }
+    ml.erase (ml.begin (), ml.end ());
+    }
+    std::cout << std::endl << "I jak?" << std::endl;
+    //*/
 }
 
 //////////////////////////////////////////////////////////////////////////////
